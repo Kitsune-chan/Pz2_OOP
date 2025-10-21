@@ -1,14 +1,76 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 
 interface IPerson
 {
+    string Lastname { get; }
     string Name { get; }
     string Patronomic { get; }
-    string Lastname { get; }
     DateTime Date { get; }
     int Age { get; }
+}
+
+public class Person : IPerson
+{
+    public string Lastname { get; protected set; }
+    public string Name { get; protected set; }
+    public string Patronomic { get; protected set; }
+
+    public DateTime Date { get; protected set; }
+
+    public int Age
+    {
+        get
+        {
+            DateTime today = DateTime.Today;
+            int age = today.Year - Date.Year;
+
+            if (Date.Date > today.AddYears(-age))
+            {
+                age--;
+            }
+
+            return age;
+        }
+    }
+
+    public Person(string lastName, string firstName, string middleName, DateTime birthDate)
+    {
+        Lastname = lastName;
+        Name = firstName;
+        Patronomic = middleName;
+        Date = birthDate;
+    }
+
+    public static Person Parse(string text)
+    {
+        var columns = text.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries);
+
+        if (columns.Length != 4)
+            throw new FormatException("Неверное количество колонок");
+
+        try
+        {
+            var lastname = columns[0].Trim();
+            var firstname = columns[1].Trim();
+            var patronomic = columns[2].Trim();
+            var date = DateTime.ParseExact(columns[3].Trim(), "dd.MM.yyyy", CultureInfo.InvariantCulture);
+
+            return new Person(lastname, firstname, patronomic, date);
+        }
+        catch (Exception ex)
+        {
+            throw new FormatException($"Ошибка парсинга данных: {ex.Message}", ex);
+        }
+    }
+
+    public override string ToString()
+    {
+        return $"{Lastname}, {Name}, {Patronomic}, {Date:dd-MM-yyyy}, {Age}";
+    }
 }
 
 public enum Position
@@ -20,43 +82,50 @@ public enum Position
     DepartmentHead
 }
 
-class Student : IPerson
+class Student : Person
 {
-    public string Name { get; }
-    public string Patronomic { get; }
-    public string Lastname { get; }
-    public DateTime Date { get; }
-    public int Age => DateTime.Now.Year - Date.Year;
     public int Course { get; }
     public string Group { get; }
     public float AverageScore { get; }
 
-    public Student(string name, string patronomic, string lastname, DateTime date, int course, string group, float averageScore)
+
+    public Student(string lastName, string firstName, string middleName, DateTime date,
+                  int course, string group, float averageScore)
+        : base(lastName, firstName, middleName, date)
     {
-        Name = name;
-        Patronomic = patronomic;
-        Lastname = lastname;
-        Date = date;
         Course = course;
         Group = group;
         AverageScore = averageScore;
     }
 
+    public static new Student Parse(string text)
+    {
+        var columns = text.Split([';'], StringSplitOptions.RemoveEmptyEntries);
+
+        if (columns.Length != 7)
+            throw new FormatException("Неверное количество колонок для студента");
+
+        try
+        {
+            var lastname = columns[0].Trim();
+            var firstname = columns[1].Trim();
+            var patronomic = columns[2].Trim();
+            var date = DateTime.ParseExact(columns[3].Trim(), "dd.MM.yyyy", CultureInfo.InvariantCulture);
+            var course = int.Parse(columns[4].Trim());
+            var group = columns[5].Trim();
+            var averageScore = float.Parse(columns[6].Trim());
+
+            return new Student(lastname, firstname, patronomic, date, course, group, averageScore);
+        }
+        catch (Exception ex)
+        {
+            throw new FormatException($"Ошибка парсинга данных студента: {ex.Message}", ex);
+        }
+    }
+
     public static Student CreateFromString(string data)
     {
-        var parts = data.Split(',');
-        if (parts.Length != 7)
-            throw new ArgumentException("Неверный формат данных для студента");
-
-        return new Student(
-            parts[0],
-            parts[1],
-            parts[2],
-            DateTime.Parse(parts[3]),
-            int.Parse(parts[4]),
-            parts[5],
-            float.Parse(parts[6])
-        );
+        return Parse(data);
     }
 
     public override string ToString()
@@ -65,43 +134,43 @@ class Student : IPerson
     }
 }
 
-class Teacher : IPerson
+class Teacher : Person
 {
-    public string Name { get; }
-    public string Patronomic { get; }
-    public string Lastname { get; }
-    public DateTime Date { get; }
-    public int Age => DateTime.Now.Year - Date.Year;
     public string Department { get; }
     public int Experience { get; }
     public Position Position { get; }
 
-    public Teacher(string name, string patronomic, string lastname, DateTime date, string department, int experience, Position position)
+    public Teacher(string lastName, string firstName, string middleName, DateTime date, string department, int experience, Position position) :
+        base(lastName, firstName, middleName, date)
     {
-        Name = name;
-        Patronomic = patronomic;
-        Lastname = lastname;
-        Date = date;
         Department = department;
         Experience = experience;
         Position = position;
     }
 
-    public static Teacher CreateFromString(string data)
+    public static new Teacher Parse(string text)
     {
-        var parts = data.Split(',');
-        if (parts.Length != 7)
-            throw new ArgumentException("Неверный формат данных для преподавателя");
+        var columns = text.Split([';'], StringSplitOptions.RemoveEmptyEntries);
 
-        return new Teacher(
-            parts[0],
-            parts[1],
-            parts[2],
-            DateTime.Parse(parts[3]),
-            parts[4],
-            int.Parse(parts[5]),
-            (Position)Enum.Parse(typeof(Position), parts[6])
-        );
+        if (columns.Length != 7)
+            throw new FormatException("Неверное количество колонок для преподавателя");
+
+        try
+        {
+            var lastname = columns[0].Trim();
+            var firstname = columns[1].Trim();
+            var patronomic = columns[2].Trim();
+            var date = DateTime.ParseExact(columns[3].Trim(), "dd.MM.yyyy", CultureInfo.InvariantCulture);
+            var departament = columns[4].Trim();
+            var experience = int.Parse(columns[5].Trim());
+            var position = (Position)Enum.Parse(typeof(Position), columns[6].Trim());
+
+            return new Teacher(lastname, firstname, patronomic, date, departament, experience, position);
+        }
+        catch (Exception ex)
+        {
+            throw new FormatException($"Ошибка парсинга данных преподавателя: {ex.Message}", ex);
+        }
     }
 
     public override string ToString()
@@ -120,16 +189,15 @@ interface IUniversity
     void Remove(IPerson person);
     IEnumerable<IPerson> FindByLastName(string lastName);
     IEnumerable<Student> FindByAvrPoint(float avrPoint);
-    IEnumerable<Teacher> FindByDepartment(string text);
 }
 
 class University : IUniversity
 {
     private List<IPerson> persons = new List<IPerson>();
 
-    public IEnumerable<IPerson> Persons => persons.OrderBy(p => p.Lastname).ThenBy(p => p.Name);
-    public IEnumerable<Student> Students => persons.OfType<Student>().OrderBy(s => s.Course).ThenBy(s => s.Group);
-    public IEnumerable<Teacher> Teachers => persons.OfType<Teacher>().OrderBy(t => t.Department).ThenBy(t => t.Lastname);
+    public IEnumerable<IPerson> Persons => persons.OrderBy(p => p.Date);
+    public IEnumerable<Student> Students => persons.OfType<Student>().OrderBy(s => s.Date);
+    public IEnumerable<Teacher> Teachers => persons.OfType<Teacher>().OrderBy(t => t.Date);
 
     public void Add(IPerson person)
     {
@@ -143,22 +211,20 @@ class University : IUniversity
 
     public IEnumerable<IPerson> FindByLastName(string lastName)
     {
-        return persons.Where(p => p.Lastname.Equals(lastName, StringComparison.OrdinalIgnoreCase))
-                     .OrderBy(p => p.Lastname).ThenBy(p => p.Name);
+        if (string.IsNullOrWhiteSpace(lastName))
+            return Enumerable.Empty<IPerson>();
+
+        var searchName = lastName.Trim().ToLower();
+
+        return persons.Where(p =>
+            p.Lastname != null &&
+            p.Lastname.Trim().ToLower().Contains(searchName));
     }
 
     public IEnumerable<Student> FindByAvrPoint(float avrPoint)
     {
         return persons.OfType<Student>()
-                     .Where(s => s.AverageScore > avrPoint)
-                     .OrderByDescending(s => s.AverageScore);
-    }
-
-    public IEnumerable<Teacher> FindByDepartment(string text)
-    {
-        return persons.OfType<Teacher>()
-                     .Where(t => t.Department.Contains(text, StringComparison.OrdinalIgnoreCase))
-                     .OrderBy(t => t.Position);
+                     .Where(s => s.AverageScore > avrPoint).OrderBy(s => s.AverageScore);
     }
 }
 
@@ -168,7 +234,11 @@ class Program
 
     static void Main(string[] args)
     {
-        InitializeTestData();
+
+        Console.OutputEncoding = Encoding.Unicode; 
+        Console.InputEncoding = Encoding.Unicode;
+
+        LoadDataFromFiles();
 
         while (true)
         {
@@ -181,8 +251,7 @@ class Program
             Console.WriteLine("5. Добавить преподавателя");
             Console.WriteLine("6. Найти по фамилии");
             Console.WriteLine("7. Найти студентов с баллом выше заданного");
-            Console.WriteLine("8. Найти преподавателей по кафедре");
-            Console.WriteLine("9. Удалить человека");
+            Console.WriteLine("8. Удалить человека");
             Console.WriteLine("0. Выход");
             Console.Write("Выберите пункт меню: ");
 
@@ -211,9 +280,6 @@ class Program
                     FindByAvrPoint();
                     break;
                 case "8":
-                    FindByDepartment();
-                    break;
-                case "9":
                     RemovePerson();
                     break;
                 case "0":
@@ -226,43 +292,211 @@ class Program
         }
     }
 
+
+    static void LoadDataFromFiles()
+    {
+        try
+        {
+            string studentFile = "Data\\Student.txt";
+            string teacherFile = "Data\\Teacher.txt";
+
+            //Console.WriteLine($"Текущая директория: {Environment.CurrentDirectory}");
+            //Console.WriteLine($"Путь к файлу студентов: {Path.GetFullPath(studentFile)}");
+
+            if (File.Exists(studentFile))
+            {
+                LoadStudentsFromFile(studentFile);
+                Console.WriteLine("Студенты загружены из файла Student.txt");
+            }
+
+            else {
+                Console.WriteLine("Файл студентов не найден");
+            }
+
+            //Console.WriteLine($"Текущая директория: {Environment.CurrentDirectory}");
+            //Console.WriteLine($"Путь к файлу преподавателей: {Path.GetFullPath(teacherFile)}");
+
+            if (File.Exists(teacherFile))
+            {
+                LoadTeachersFromFile(teacherFile);
+                Console.WriteLine("Преподаватели загружены из файла Teacher.txt");
+            }
+            else
+            {
+                Console.WriteLine("Файл преподавателей не найден");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка при загрузке данных: {ex.Message}");
+        }
+
+        WaitForKey();   
+    }
+
+
+    static void LoadStudentsFromFile(string filename)
+    {
+        if (!File.Exists(filename))
+        {
+            Console.WriteLine($"Файл {filename} не найден!");
+            return;
+        }
+
+        var lines = File.ReadAllLines(filename, Encoding.UTF8);
+        int loadedCount = 0;
+
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            var student = Student.Parse(line);
+            university.Add(student);
+            loadedCount++;
+        }
+    }
+
+    static void LoadTeachersFromFile(string filename)
+    {
+        if (!File.Exists(filename))
+        {
+            Console.WriteLine($"Файл {filename} не найден!");
+            return;
+        }
+
+        var lines = File.ReadAllLines(filename, Encoding.UTF8);
+        int loadedCount = 0;
+
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            var teacher = Teacher.Parse(line);
+            university.Add(teacher);
+            loadedCount++;
+        }
+
+    }
+
+    static void DisplayPaginated<T>(IEnumerable<T> items, string title, Func<T, string> toString)
+    {
+        var itemList = items.ToList();
+
+        if (!itemList.Any())
+        {
+            Console.WriteLine($"{title} не найдены.");
+            WaitForKey();
+            return;
+        }
+
+        int pageSize = 100;
+        int currentPage = 0;
+        int totalPages = (int)Math.Ceiling(itemList.Count / (double)pageSize);
+
+        while (currentPage < totalPages)
+        {
+            Console.Clear();
+            Console.WriteLine($"{title} (стр. {currentPage + 1} из {totalPages}, всего: {itemList.Count})");
+            Console.WriteLine("=".PadRight(80, '='));
+
+            // Показываем записи текущей страницы
+            var pageItems = itemList
+                .Skip(currentPage * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            for (int i = 0; i < pageItems.Count; i++)
+            {
+                int globalIndex = currentPage * pageSize + i;
+                Console.WriteLine($"{globalIndex + 1}. {toString(pageItems[i])}");
+            }
+
+            // Меню навигации
+            Console.WriteLine("\n" + "=".PadRight(80, '='));
+            if (totalPages > 1)
+            {
+                Console.WriteLine("Навигация: 'n' - след. страница, 'p' - пред. страница, 'q' - выход");
+            }
+            else
+            {
+                Console.WriteLine("'q' - выход");
+            }
+
+            Console.Write("Ваш выбор: ");
+            var input = Console.ReadLine()?.ToLower();
+
+            if (input == "n" && currentPage < totalPages - 1)
+            {
+                currentPage++;
+            }
+            else if (input == "p" && currentPage > 0)
+            {
+                currentPage--;
+            }
+            else if (input == "q")
+            {
+                break;
+            }
+            else if (!string.IsNullOrEmpty(input) && totalPages > 1)
+            {
+                Console.WriteLine("Неверный ввод! Используйте 'n', 'p' или 'q'.");
+                WaitForKey();
+            }
+        }
+    }
+
+
     static void InitializeTestData()
     {
-        university.Add(new Student("Иван", "Петрович", "Сидоров", new DateTime(2000, 5, 15), 2, "ИСП-201", 4.2f));
-        university.Add(new Student("Мария", "Сергеевна", "Иванова", new DateTime(2001, 8, 22), 1, "ИСП-101", 4.7f));
-        university.Add(new Student("Алексей", "Владимирович", "Петров", new DateTime(1999, 3, 10), 3, "ИСП-301", 3.8f));
+        university.Add(new Student("Сидоров", "Иван", "Петрович", new DateTime(2000, 5, 15), 2, "ИСП-201", 4.2f));
+        university.Add(new Student("Иванова", "Мария", "Сергеевна", new DateTime(2001, 8, 22), 1, "ИСП-101", 4.7f));
+        university.Add(new Student("Петров", "Алексей", "Владимирович", new DateTime(1999, 3, 10), 3, "ИСП-301", 3.8f));
 
-        university.Add(new Teacher("Ольга", "Николаевна", "Смирнова", new DateTime(1975, 12, 5), "Информационные системы", 15, Position.Professor));
-        university.Add(new Teacher("Дмитрий", "Иванович", "Козлов", new DateTime(1980, 7, 18), "Программная инженерия", 10, Position.Docent));
-        university.Add(new Teacher("Елена", "Викторовна", "Павлова", new DateTime(1985, 2, 28), "Информационные системы", 8, Position.SeniorLecturer));
+        university.Add(new Teacher("Smirnova", "Ольга", "Николаевна", new DateTime(1975, 12, 5), "Информационные системы", 15, Position.Professor));
+        university.Add(new Teacher("Козлов", "Дмитрий", "Иванович", new DateTime(1980, 7, 18), "Программная инженерия", 10, Position.Docent));
+        university.Add(new Teacher("Павлова", "Елена", "Викторовна", new DateTime(1985, 2, 28), "Информационные системы", 8, Position.SeniorLecturer));
     }
 
     static void ShowAllPersons()
     {
-        Console.WriteLine("\n=== Все люди в университете ===");
-        foreach (var person in university.Persons)
-        {
-            Console.WriteLine(person);
-        }
-        WaitForKey();
+        DisplayPaginated(university.Persons.OrderBy(s => s.Lastname).ThenBy(s => s.Name),
+            "=== Все люди в университете ===",
+            p => p.ToString());
     }
 
     static void ShowAllStudents()
     {
-        Console.WriteLine("\n=== Все студенты ===");
-        foreach (var student in university.Students)
-        {
-            Console.WriteLine(student);
-        }
-        WaitForKey();
+        DisplayPaginated(university.Students.OrderBy(s => s.Lastname).ThenBy(s => s.Name),
+            "=== Все студенты ===",
+            s => s.ToString());
     }
 
     static void ShowAllTeachers()
     {
-        Console.WriteLine("\n=== Все преподаватели ===");
-        foreach (var teacher in university.Teachers)
+        DisplayPaginated(university.Teachers.OrderBy(s => s.Lastname).ThenBy(s => s.Name),
+            "=== Все преподаватели ===",
+            t => t.ToString());
+    }
+
+
+    static void AddTeacher()
+    {
+        try
         {
-            Console.WriteLine(teacher);
+            Console.WriteLine("\n=== Добавление преподавателя ===");
+            Console.WriteLine("Введите данные в формате: Фамилия; Имя; Отчество; ДатаРождения(дд.мм.гггг); Кафедра; Стаж; Должность");
+            Console.WriteLine("Должности: Assistant, SeniorLecturer, Docent, Professor, DepartmentHead");
+            Console.WriteLine("Пример: Петров; Иван; Михайлович; 20.08.1975; Информационные системы; 15; Professor");
+            Console.Write("Данные: ");
+            var input = Console.ReadLine();
+
+            var teacher = Teacher.Parse(input);
+            university.Add(teacher);
+            Console.WriteLine("Преподаватель успешно добавлен!");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка: {ex.Message}");
         }
         WaitForKey();
     }
@@ -272,34 +506,14 @@ class Program
         try
         {
             Console.WriteLine("\n=== Добавление студента ===");
-            Console.WriteLine("Введите данные в формате: Имя,Отчество,Фамилия,ДатаРождения(гггг-мм-дд),Курс,Группа,СреднийБалл");
+            Console.WriteLine("Введите данные в формате: Фамилия; Имя; Отчество; ДатаРождения(дд.мм.гггг); Курс; Группа; СреднийБалл");
+            Console.WriteLine("Пример: Иванов; Петр; Сергеевич; 15.05.2000; 2; ИСП-201; 4,5");
             Console.Write("Данные: ");
             var input = Console.ReadLine();
 
             var student = Student.CreateFromString(input);
             university.Add(student);
             Console.WriteLine("Студент успешно добавлен!");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка: {ex.Message}");
-        }
-        WaitForKey();
-    }
-
-    static void AddTeacher()
-    {
-        try
-        {
-            Console.WriteLine("\n=== Добавление преподавателя ===");
-            Console.WriteLine("Введите данные в формате: Имя,Отчество,Фамилия,ДатаРождения(гггг-мм-дд),Кафедра,Стаж,Должность");
-            Console.WriteLine("Должности: Assistant, SeniorLecturer, Docent, Professor, DepartmentHead");
-            Console.Write("Данные: ");
-            var input = Console.ReadLine();
-
-            var teacher = Teacher.CreateFromString(input);
-            university.Add(teacher);
-            Console.WriteLine("Преподаватель успешно добавлен!");
         }
         catch (Exception ex)
         {
@@ -315,88 +529,119 @@ class Program
         var lastName = Console.ReadLine();
 
         var results = university.FindByLastName(lastName);
-        if (results.Any())
-        {
-            foreach (var person in results)
-            {
-                Console.WriteLine(person);
-            }
-        }
-        else
-        {
-            Console.WriteLine("Люди с такой фамилией не найдены.");
-        }
-        WaitForKey();
+
+        DisplayPaginated(results,
+            $"=== Результаты поиска по фамилии '{lastName}' ===",
+            p => p.ToString());
     }
 
     static void FindByAvrPoint()
     {
         Console.WriteLine("\n=== Поиск студентов с баллом выше заданного ===");
         Console.Write("Введите минимальный средний балл: ");
+
         if (float.TryParse(Console.ReadLine(), out float avrPoint))
         {
             var results = university.FindByAvrPoint(avrPoint);
-            if (results.Any())
-            {
-                foreach (var student in results)
-                {
-                    Console.WriteLine(student);
-                }
-            }
-            else
-            {
-                Console.WriteLine("Студенты с таким баллом не найдены.");
-            }
+
+            DisplayPaginated(results,
+                $"=== Студенты со средним баллом выше {avrPoint:F2} ===",
+                s => s.ToString());
         }
         else
         {
             Console.WriteLine("Неверный формат балла!");
+            WaitForKey();
         }
-        WaitForKey();
     }
 
-    static void FindByDepartment()
-    {
-        Console.WriteLine("\n=== Поиск преподавателей по кафедре ===");
-        Console.Write("Введите текст для поиска в названии кафедры: ");
-        var text = Console.ReadLine();
-
-        var results = university.FindByDepartment(text);
-        if (results.Any())
-        {
-            foreach (var teacher in results)
-            {
-                Console.WriteLine(teacher);
-            }
-        }
-        else
-        {
-            Console.WriteLine("Преподаватели по такой кафедре не найдены.");
-        }
-        WaitForKey();
-    }
 
     static void RemovePerson()
     {
         Console.WriteLine("\n=== Удаление человека ===");
-        Console.WriteLine("Список всех людей:");
+        Console.Write("Введите фамилию: ");
+        var lastName = Console.ReadLine();
 
-        var personsList = university.Persons.ToList();
-        for (int i = 0; i < personsList.Count; i++)
-        {
-            Console.WriteLine($"{i + 1}. {personsList[i]}");
-        }
+        var results = university.FindByLastName(lastName).OrderBy(p => p.Name).ToList();
 
-        Console.Write("Введите номер для удаления: ");
-        if (int.TryParse(Console.ReadLine(), out int index) && index >= 1 && index <= personsList.Count)
+        if (results.Any())
         {
-            university.Remove(personsList[index - 1]);
-            Console.WriteLine("Человек успешно удален!");
+            Console.WriteLine($"Найдено {results.Count()} записей:");
+
+            int pageSize = 100;
+            int currentPage = 0;
+            int totalPages = (int)Math.Ceiling(results.Count / (double)pageSize);
+
+            while (currentPage < totalPages)
+            {
+                Console.WriteLine($"\n--- Страница {currentPage + 1} из {totalPages} ---");
+
+                // Показываем записи текущей страницы
+                var pageItems = results
+                    .Skip(currentPage * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                for (int i = 0; i < pageItems.Count; i++)
+                {
+                    int globalIndex = currentPage * pageSize + i;
+                    Console.WriteLine($"{globalIndex + 1}. {pageItems[i]}");
+                }
+
+                // Меню навигации
+                if (currentPage < totalPages - 1)
+                {
+                    Console.WriteLine("\n'n' - следующая страница, 'p' - предыдущая страница, 'число' - выбрать для удаления, 'q' - отмена");
+                }
+                else
+                {
+                    Console.WriteLine("\n'p' - предыдущая страница, 'число' - выбрать для удаления, 'q' - отмена");
+                }
+
+                Console.Write("Ваш выбор: ");
+                var input = Console.ReadLine()?.ToLower();
+
+                if (input == "n" && currentPage < totalPages - 1)
+                {
+                    currentPage++;
+                    Console.Clear();
+                    Console.WriteLine($"=== Удаление человека (найдено {results.Count()} записей) ===");
+                }
+                else if (input == "p" && currentPage > 0)
+                {
+                    currentPage--;
+                    Console.Clear();
+                    Console.WriteLine($"=== Удаление человека (найдено {results.Count()} записей) ===");
+                }
+                else if (input == "q")
+                {
+                    Console.WriteLine("Операция отменена.");
+                    return;
+                }
+                else if (int.TryParse(input, out int selectedIndex) &&
+                         selectedIndex >= 1 && selectedIndex <= results.Count)
+                {
+                    // Удаление выбранной записи
+                    var personToRemove = results[selectedIndex - 1];
+                    university.Remove(personToRemove);
+                    Console.WriteLine($"Человек успешно удален: {personToRemove.Lastname} {personToRemove.Name}");
+                    WaitForKey();
+                    return;
+                }
+                else
+                {
+                    Console.WriteLine("Неверный ввод! Попробуйте снова.");
+                    WaitForKey();
+                    Console.Clear();
+                    Console.WriteLine($"=== Удаление человека (найдено {results.Count()} записей) ===");
+                }
+            }
         }
         else
         {
-            Console.WriteLine("Неверный номер!");
+            Console.WriteLine("Люди с такой фамилией не найдены.");
         }
+
         WaitForKey();
     }
 
